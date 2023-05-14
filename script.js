@@ -15,8 +15,10 @@ const apiURL = `https://api.nasa.gov/planetary/apod?api_key=${apiKEY}&count=${co
 let resultsArray = [];
 let favorites = {};
 
-function updateDOM() {
-	resultsArray.forEach((result) => {
+function createDOMNodes(page) {
+	const currentArray = page === "results" ? resultsArray : Object.values(favorites);
+	console.log("Current Array", page, currentArray);
+	currentArray.forEach((result) => {
 		// Card Container
 		const card = document.createElement("div");
 		card.classList.add("card");
@@ -41,8 +43,13 @@ function updateDOM() {
 		// Save Text
 		const saveText = document.createElement("p");
 		saveText.classList.add("clickable");
-		saveText.textContent = "Add to Favorites";
-		saveText.setAttribute("onclick", `saveFavorite("${result.url}")`);
+		if (page === "results") {
+			saveText.textContent = "Add to Favorites";
+			saveText.setAttribute("onclick", `saveFavorite("${result.url}")`);		
+		} else {
+			saveText.textContent = "Remove Favorites";
+			saveText.setAttribute("onclick", `removeFavorite("${result.url}")`);	
+		}
 		// Card Text
 		const cardText = document.createElement("p");
 		cardText.textContent = result.explanation;
@@ -62,7 +69,17 @@ function updateDOM() {
 		link.appendChild(image);
 		card.append(link, cardBody);
 		imagesContainer.appendChild(card);
-	});
+	});	
+}
+
+function updateDOM(page) {
+	// Get favorites from localStorage
+	if (localStorage.getItem('nasaFavorites')) {
+		favorites = JSON.parse(localStorage.getItem('nasaFavorites'))
+		console.log("updateDOM: ", favorites);
+	}
+	imagesContainer.textContent = ""; /* causes page to reload by removing all appended elements */
+	createDOMNodes(page);
 }
 
 //  Add result to Favorites
@@ -82,12 +99,22 @@ function saveFavorite(itemURL) {
 	});
 }
 
+// Remove item from favorites
+function removeFavorite(itemURL) {
+	if (favorites[itemURL]) {
+		delete favorites[itemURL];
+		// Set favorites in local storage
+		localStorage.setItem("nasaFavorites",JSON.stringify(favorites));
+		updateDOM("favorites");
+	}
+}
+
 // Get 10 images from NASA API
 async function getNASAPictures() {
 	try {
 		const response = await fetch(apiURL);
 		resultsArray = await response.json();
-		updateDOM();
+		updateDOM("favorites");
 	} catch (error) {
 		// Catch error here
 	}
